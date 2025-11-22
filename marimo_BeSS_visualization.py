@@ -98,13 +98,15 @@ def _(fh, file_paths, mo):
 
 @app.cell
 def _(bess_files_sorted, date_slider, dp, featurebox, tbinbox):
-    x_positions, binned_dates, flux_matrix = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value, bin_days=tbinbox.value)
-    return binned_dates, flux_matrix, x_positions
+    x_positions, dates_arrays, flux_arrays = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value, bin_days=tbinbox.value)
+    return dates_arrays, flux_arrays, x_positions
 
 
 @app.cell
-def _():
-    return
+def _(dates_arrays, dp, flux_arrays, tbinbox):
+    # --- Bin data ---
+    binned_dates, flux_matrix = dp.bin_times_and_spectra(dates_arrays, flux_arrays, tbinbox.value)
+    return binned_dates, flux_matrix
 
 
 @app.cell
@@ -123,6 +125,12 @@ def _(date_slider, featurebox, fig, filebox, mo, tbinbox, xbutton):
     mo.hstack([mo.mpl.interactive(fig),
                mo.vstack([filebox, featurebox, tbinbox, xbutton, date_slider])],
               widths=[1,1])
+    return
+
+
+@app.cell
+def _(dates_arrays):
+    len(dates_arrays)
     return
 
 

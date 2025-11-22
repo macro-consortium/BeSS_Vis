@@ -72,7 +72,11 @@ def bin_times_and_spectra(dates, flux_arrays, bin_days):
         Missing-data bins are filled with NaNs (blank rows).
     """
     if len(dates) == 0:
-        return [], []
+        binned_dates = np.arange(50000,60000,1000)
+        flux_matrix = np.empty((1000, len(binned_dates),))
+        flux_matrix[:] = np.nan
+
+        return binned_dates, flux_matrix        
 
     # Sort by date
     #sorted_idx = np.argsort(dates)
@@ -114,7 +118,9 @@ def bin_times_and_spectra(dates, flux_arrays, bin_days):
             binned_dates.append(mid)
             binned_fluxes.append(avg)
 
-    return binned_dates, binned_fluxes
+    flux_matrix = np.vstack(binned_fluxes)
+        
+    return binned_dates, flux_matrix
 
 def data_setup(files, **kwargs):
 
@@ -122,7 +128,6 @@ def data_setup(files, **kwargs):
     date_range=kwargs.setdefault('dates',None)
     interp=kwargs.setdefault('interp','auto')
     xformat = kwargs.setdefault('xformat', 'wavelength')
-    bin_days=kwargs.setdefault('bin_days', 365)
     
     # --- define common wavelength grid ---
     if feature == 'All':
@@ -157,12 +162,4 @@ def data_setup(files, **kwargs):
     flux_arrays = np.array(all_fluxes)[sorted_idx]
     #print(mjd)
     
-    # --- Bin data ---
-    binned_dates, binned_fluxes = bin_times_and_spectra(mjd, flux_arrays, bin_days)
-    if len(binned_dates) == 0:
-        binned_dates = np.arange(date_range[0],date_range[1],1000)
-        flux_matrix = np.empty((len(common_wave), len(binned_dates),))
-        flux_matrix[:] = np.nan
-    else:
-        flux_matrix = np.vstack(binned_fluxes)
-    return common_wave, binned_dates, flux_matrix
+    return common_wave, mjd, flux_arrays
