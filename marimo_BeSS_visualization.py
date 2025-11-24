@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.15.2"
+__generated_with = "0.13.15"
 app = marimo.App(width="full")
 
 
@@ -55,14 +55,27 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
                                     orientation='vertical',
                                     debounce=True
     )
-    filebox = mo.ui.dropdown(options=[os.path.basename(x) for x in glob.glob('BeSS_Files/*')],
-                            value=[os.path.basename(x) for x in glob.glob('BeSS_Files/*')][0],
-                            label='Star:'
+
+
+    # List out all available files  
+    bess_data_folder = 'BeSS_Files' 
+    filenames = [os.path.basename(x) for x in glob.glob(f'{bess_data_folder}/*')] 
+    filebox = mo.ui.dropdown(
+        options=filenames,
+        value=filenames[0],
+        label='Star:'
     )
+    print(f"All files found in '{bess_data_folder}' folder:")
+    for filename in filenames: 
+        print(filename) 
+
+
+
     featurebox = mo.ui.dropdown(options=['All', 'Hα', 'He I'],
                                 value='Hα',
                                 label='Feature:'
     )
+
     tbinbox = mo.ui.number(value=365,
                         start=1,
                         stop=1e4,
@@ -74,6 +87,8 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
                              value="wavelength",
                              label="X-axis Units"
     )
+
+
     return date_slider, featurebox, filebox, tbinbox, xbutton
 
 
