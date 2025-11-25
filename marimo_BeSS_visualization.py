@@ -95,7 +95,7 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
         label="X-axis Units"
     )
 
-    ybutton_options = ["ISO (YYYY-MM-DD)", "Modified Julian Date (MJD)"]
+    ybutton_options = ["YYYY-MM-DD", "Modified Julian Date (MJD)"]
     ybutton = mo.ui.radio(
         options=ybutton_options,
         value=ybutton_options[0],
@@ -222,11 +222,17 @@ def _(
 
         # --- Bin data ---
         binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
-    
+
+        # Use button to decide whether to plot MJD or ISO on y axis 
+        if ybutton.value == ybutton_options[0]: 
+            yformat = "isot"
+        if ybutton.value == ybutton_options[1]: 
+            yformat = "mjd"
+        
         fig, ax = pf.plot_bess_binned_dynamic(
             common_wave, binned_dates, flux_matrix,
             target_name=filebox.value,
-            yformat="mjd",
+            yformat=yformat, 
             bin_days=tbinbox.value,
             xformat = xbutton.value,
             cmap="inferno", 
@@ -259,6 +265,16 @@ def _(
     )
 
 
+    return
+
+
+@app.cell
+def _(Time):
+    # for i in [53325, 54786, 56247, 57708, 59169]: 
+    for i in [56247, 56978, 57708, 58439, 59169]: 
+
+        x = Time(i, format='mjd', scale='utc').to_datetime().date() 
+        print(x)
     return
 
 
