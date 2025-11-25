@@ -103,7 +103,15 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
     )
 
 
-    return date_slider, featurebox, filebox, tbinbox, xbutton, ybutton
+    return (
+        date_slider,
+        featurebox,
+        filebox,
+        tbinbox,
+        xbutton,
+        ybutton,
+        ybutton_options,
+    )
 
 
 @app.cell
@@ -123,6 +131,17 @@ def _(flux_arrays, mo, np):
         orientation = "vertical"
     )
     return (vrange_slider,)
+
+
+@app.cell
+def _(mo):
+    plot_mode_options = ["No binning", "Yes binning"]
+    plot_mode = mo.ui.radio(
+        options=plot_mode_options,
+        value=plot_mode_options[0],
+        label="Plot mode: "
+    )
+    return plot_mode, plot_mode_options
 
 
 @app.cell
@@ -152,62 +171,69 @@ def _(fh, file_paths, mo):
 @app.cell
 def _(bess_files_sorted, date_slider, dp, featurebox):
     common_wave, mjd, dates, flux_arrays = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value) 
-    return common_wave, flux_arrays, mjd
+    return common_wave, dates, flux_arrays, mjd
 
 
 @app.cell
 def _(
     common_wave,
+    dates,
     dp,
     filebox,
     flux_arrays,
     mjd,
     pf,
+    plot_mode,
+    plot_mode_options,
     tbinbox,
     vrange_slider,
     xbutton,
+    ybutton,
+    ybutton_options,
 ):
-    # --- Bin data ---
-    binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
+    # Choose plot 
+
+
+
+    # New (John's version, does not require data to be binned) 
+    if plot_mode.value == plot_mode_options[0]: 
+
+        # Use button to decide whether to plot MJD or ISO on y axis 
+        if ybutton.value == ybutton_options[0]: 
+            yvals = dates 
+        if ybutton.value == ybutton_options[1]: 
+            yvals = mjd  
+    
+        # Create plot 
+        fig, ax = pf.plot_bess_unbinned(
+            common_wave, 
+            yvals, 
+            flux_arrays, 
+            xformat = xbutton.value, 
+            cmap = "inferno", 
+            vmin = vrange_slider.value[0], 
+            vmax = vrange_slider.value[1]
+        )
+
+
 
     # Original (Sean's version, requires data to be binned) 
-    fig, ax = pf.plot_bess_binned_dynamic(
-        common_wave, binned_dates, flux_matrix,
-        target_name=filebox.value,
-        yformat="mjd",
-        bin_days=tbinbox.value,
-        xformat = xbutton.value,
-        cmap="inferno", 
-        vmin = vrange_slider.value[0], 
-        vmax = vrange_slider.value[1]
-    ) 
+    if plot_mode.value == plot_mode_options[1]: 
+
+        # --- Bin data ---
+        binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
+    
+        fig, ax = pf.plot_bess_binned_dynamic(
+            common_wave, binned_dates, flux_matrix,
+            target_name=filebox.value,
+            yformat="mjd",
+            bin_days=tbinbox.value,
+            xformat = xbutton.value,
+            cmap="inferno", 
+            vmin = vrange_slider.value[0], 
+            vmax = vrange_slider.value[1]
+        ) 
     return (fig,)
-
-
-@app.cell
-def _():
-    # # New (John's version, does not require data to be binned) 
-
-    # # Use button to decide whether to plot MJD or ISO on y axis 
-    # if ybutton.value == ybutton_options[0]: 
-    #     yvals = dates 
-    # if ybutton.value == ybutton_options[1]: 
-    #     yvals = mjd  
-
-
-    # # Create plot 
-    # fig, ax = pf.plot_bess_unbinned(
-    #     common_wave, 
-    #     yvals, 
-    #     flux_arrays, 
-    #     xformat = xbutton.value, 
-    #     cmap = "inferno", 
-    #     vmin = vrange_slider.value[0], 
-    #     vmax = vrange_slider.value[1]
-    # )
-
-
-    return
 
 
 @app.cell
@@ -218,6 +244,7 @@ def _(
     fig,
     filebox,
     mo,
+    plot_mode,
     tbinbox,
     vrange_slider,
     xbutton,
@@ -226,7 +253,7 @@ def _(
     mo.hstack(
         [
             mo.mpl.interactive(fig), 
-            mo.vstack([filebox, featurebox, tbinbox, "\n", xbutton, "\n", ybutton, "\n", date_slider, date_range_str, "\n", vrange_slider])
+            mo.vstack([filebox, featurebox, tbinbox, plot_mode, "\n", xbutton, "\n", ybutton, "\n", date_slider, date_range_str, "\n", vrange_slider])
         ], 
         widths=[1,1], 
     )
