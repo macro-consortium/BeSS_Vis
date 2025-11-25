@@ -32,6 +32,7 @@ def plot_bess_unbinned(
 
     # Create the plot using pcolormesh 
     fig, ax = plt.subplots(figsize=(8, 8))
+    fig.subplots_adjust(left=0.2)
     im = ax.pcolormesh(
         xvals, 
         yvals, 
@@ -44,7 +45,7 @@ def plot_bess_unbinned(
     ax.set_xlabel(xlabel, fontsize=16)
     ax.set_ylabel("Observation Date", fontsize=16)
     # ax.title(f"Dynamic Spectrum for {target_name} ({bin_days} day bins)")
-    # ax.minorticks_on() 
+    ax.minorticks_on() 
     labelsize = 12 
     ax.tick_params(which="both",top=True,right=True,labelsize=labelsize)
     cbar = fig.colorbar(im, cmap=cmap)
