@@ -8,6 +8,55 @@ import pytz
 
 import file_handler as fh
 
+
+
+# Author: John M 
+def plot_bess_unbinned(
+    xvals, 
+    yvals, 
+    fluxes, 
+    **kwargs 
+): 
+    
+    cmap=kwargs.setdefault('cmap','plasma')
+    xformat = kwargs.setdefault('xformat', 'wavelength')
+    vmin = kwargs.setdefault("vmin", 0.0) 
+    vmax = kwargs.setdefault("vmax", 1.0) 
+
+    if xformat == 'velocity':
+        velocities = (xvals - 6562.8)/6562.8 * 3e5 #km/s
+        xvals = velocities
+        xlabel = r'Velocity (km s$^{-1}$)'
+    else:
+        xlabel = "Wavelength (Å)"
+
+    # Create the plot using pcolormesh 
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.pcolormesh(
+        xvals, 
+        yvals, 
+        fluxes, 
+        cmap = cmap,  
+        vmin = vmin, 
+        vmax = vmax 
+    )
+
+    ax.set_xlabel(xlabel, fontsize=16)
+    ax.set_ylabel("Observation Date", fontsize=16)
+    # ax.title(f"Dynamic Spectrum for {target_name} ({bin_days} day bins)")
+    # ax.minorticks_on() 
+    labelsize = 12 
+    ax.tick_params(which="both",top=True,right=True,labelsize=labelsize)
+    cbar = fig.colorbar(im, cmap=cmap)
+    cbar.set_label("Normalized Flux", size=16)
+    cbar.ax.tick_params(labelsize=12)
+
+    return fig, ax 
+
+
+
+
+
 def plot_bess_binned_dynamic(
     xvals,
     yvals,
