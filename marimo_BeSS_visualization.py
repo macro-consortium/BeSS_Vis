@@ -103,15 +103,7 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
     )
 
 
-    return (
-        date_slider,
-        featurebox,
-        filebox,
-        tbinbox,
-        xbutton,
-        ybutton,
-        ybutton_options,
-    )
+    return date_slider, featurebox, filebox, tbinbox, xbutton, ybutton
 
 
 @app.cell
@@ -160,60 +152,62 @@ def _(fh, file_paths, mo):
 @app.cell
 def _(bess_files_sorted, date_slider, dp, featurebox):
     common_wave, mjd, dates, flux_arrays = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value) 
-    return common_wave, dates, flux_arrays, mjd
-
-
-@app.cell
-def _():
-    # # --- Bin data ---
-    # binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
-
-    # # Original (Sean's version, requires data to be binned) 
-    # fig, ax = pf.plot_bess_binned_dynamic(
-    #     common_wave, binned_dates, flux_matrix,
-    #     target_name=filebox.value,
-    #     yformat="mjd",
-    #     bin_days=tbinbox.value,
-    #     xformat = xbutton.value,
-    #     cmap="inferno"
-    # ) 
-    return
+    return common_wave, flux_arrays, mjd
 
 
 @app.cell
 def _(
     common_wave,
-    dates,
+    dp,
+    filebox,
     flux_arrays,
     mjd,
     pf,
+    tbinbox,
     vrange_slider,
     xbutton,
-    ybutton,
-    ybutton_options,
 ):
-    # New (John's version, does not require data to be binned) 
+    # --- Bin data ---
+    binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
 
-    # Use button to decide whether to plot MJD or ISO on y axis 
-    if ybutton.value == ybutton_options[0]: 
-        yvals = dates 
-    if ybutton.value == ybutton_options[1]: 
-        yvals = mjd  
-
-
-    # Create plot 
-    fig, ax = pf.plot_bess_unbinned(
-        common_wave, 
-        yvals, 
-        flux_arrays, 
-        xformat = xbutton.value, 
-        cmap = "inferno", 
+    # Original (Sean's version, requires data to be binned) 
+    fig, ax = pf.plot_bess_binned_dynamic(
+        common_wave, binned_dates, flux_matrix,
+        target_name=filebox.value,
+        yformat="mjd",
+        bin_days=tbinbox.value,
+        xformat = xbutton.value,
+        cmap="inferno", 
         vmin = vrange_slider.value[0], 
         vmax = vrange_slider.value[1]
-    )
-
-
+    ) 
     return (fig,)
+
+
+@app.cell
+def _():
+    # # New (John's version, does not require data to be binned) 
+
+    # # Use button to decide whether to plot MJD or ISO on y axis 
+    # if ybutton.value == ybutton_options[0]: 
+    #     yvals = dates 
+    # if ybutton.value == ybutton_options[1]: 
+    #     yvals = mjd  
+
+
+    # # Create plot 
+    # fig, ax = pf.plot_bess_unbinned(
+    #     common_wave, 
+    #     yvals, 
+    #     flux_arrays, 
+    #     xformat = xbutton.value, 
+    #     cmap = "inferno", 
+    #     vmin = vrange_slider.value[0], 
+    #     vmax = vrange_slider.value[1]
+    # )
+
+
+    return
 
 
 @app.cell

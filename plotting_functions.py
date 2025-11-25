@@ -70,6 +70,8 @@ def plot_bess_binned_dynamic(
     interp=kwargs.setdefault('interp','auto')
     yformat = kwargs.setdefault('yformat','mjd')
     xformat = kwargs.setdefault('xformat', 'wavelength')
+    vmin = kwargs.setdefault("vmin", 0.0) 
+    vmax = kwargs.setdefault("vmax", 1.0) 
 
     """
     Plot dynamic spectrum (time vs wavelength) for BeSS data.
@@ -91,7 +93,9 @@ def plot_bess_binned_dynamic(
         aspect='auto',
         cmap=cmap,
         extent=[xvals[0], xvals[-1], yvals[0], yvals[-1]],
-        origin='lower'
+        origin='lower', 
+        vmin = vmin, 
+        vmax = vmax, 
     )
 
 
