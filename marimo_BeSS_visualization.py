@@ -268,15 +268,5 @@ def _(
     return
 
 
-@app.cell
-def _(Time):
-    # for i in [53325, 54786, 56247, 57708, 59169]: 
-    for i in [56247, 56978, 57708, 58439, 59169]: 
-
-        x = Time(i, format='mjd', scale='utc').to_datetime().date() 
-        print(x)
-    return
-
-
 if __name__ == "__main__":
     app.run()
