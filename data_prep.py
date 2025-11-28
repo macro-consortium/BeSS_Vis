@@ -162,4 +162,4 @@ def data_setup(files, **kwargs):
     flux_arrays = np.array(all_fluxes)[sorted_idx]
     #print(mjd)
     
-    return common_wave, mjd, flux_arrays
+    return common_wave, mjd, dates, flux_arrays
