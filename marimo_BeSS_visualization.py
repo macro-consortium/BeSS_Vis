@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.13.15"
+__generated_with = "0.15.2"
 app = marimo.App(width="full")
 
 
@@ -14,7 +14,7 @@ def _():
     import pytz
     from astropy.time import Time
     from datetime import datetime, timedelta
-    return Time, datetime, glob, mo, np, os, pytz
+    return Time, datetime, glob, mo, os, pytz
 
 
 @app.cell
@@ -52,107 +52,98 @@ def _(glob, min_time_mjd, mo, os, today_mjd):
         stop=today_mjd,
         step=0.1,
         value=[min_time_mjd,today_mjd],
-        label='Date Range',
+        label='Dates',
         orientation='vertical',
         debounce=True
     )
 
-
-
-    # List out all available data folders   
-    bess_data_folder = 'BeSS_Files' 
-    filenames = [os.path.basename(x) for x in glob.glob(f'{bess_data_folder}/*')] 
-
+    filenames = [os.path.basename(x) for x in glob.glob('BeSS_Files/*')] 
     filebox = mo.ui.dropdown(
         options=filenames,
         value=filenames[0],
-        label='Star:'
+        label='Star'
     )
 
-    print(f"Folders found in '{bess_data_folder}':")
-    for filename in filenames: 
-        print(filename) 
-
-
+    filebox2 = mo.ui.dropdown(
+        options=filenames,
+        value=filenames[1],
+        label='Star 2'
+    )
 
     featurebox = mo.ui.dropdown(
         options=['All', 'Hα', 'He I'],
         value='Hα',
         label='Feature:'
     )
-
     tbinbox = mo.ui.number(
         value=365,
-        start=1,
-        stop=1e4,
-        step=1,
         label='Time bin in days'
     )
 
-    xbutton = mo.ui.radio(
-        options=["wavelength", "velocity"],
-        value="wavelength",
-        label="X-axis Units"
-    )
+    velaxis = mo.ui.checkbox(label="Velocity axis")
 
-    ybutton_options = ["YYYY-MM-DD", "Modified Julian Date (MJD)"]
+    ybutton_options = ["MJD","YYYY-MM-DD"]
     ybutton = mo.ui.radio(
         options=ybutton_options,
         value=ybutton_options[0],
         label="Y-axis Units"
     )
 
+    comparecheck = mo.ui.checkbox(label="Compare Stars")
 
+    phasecheck = mo.ui.checkbox(label="Plot phase")
+
+    phasebinbox = mo.ui.number(
+        value=0.1,
+        start=1e-3,
+        label="Phase bin"
+    )
+
+    time0box = mo.ui.number(
+        value=51544.5,
+        label=r'$T_0$ in MJD'
+    )
+
+    periodbox = mo.ui.number(
+        value=100,
+        label='Period in days'
+    )
+
+    heliocheck = mo.ui.checkbox(label="Heliocentric Correction")
+
+    cMaps=['viridis', 'plasma', 'inferno', 'magma', 'cividis']
+    cmapbox = mo.ui.dropdown(
+        options=cMaps,
+        value=cMaps[2],
+        label="Color Map"
+    )
+
+    vlimits = mo.ui.range_slider(
+        start=0,
+        stop=1,
+        step=0.05,
+        value=[0,1],
+        label='Legend',
+        orientation='vertical',
+        debounce=True
+    )
     return (
+        cmapbox,
+        comparecheck,
         date_slider,
         featurebox,
         filebox,
+        filebox2,
+        heliocheck,
+        periodbox,
+        phasebinbox,
+        phasecheck,
         tbinbox,
-        xbutton,
+        time0box,
+        velaxis,
+        vlimits,
         ybutton,
-        ybutton_options,
     )
-
-
-@app.cell
-def _(flux_arrays, mo, np):
-    # Add slider that determines the vmin and vmax of the colorbar 
-
-    # Use range of values in fluxes to set the default (after ignoring any points that equal exactly 0.0)
-    new_fluxes = np.copy(flux_arrays) 
-    new_fluxes[np.where(flux_arrays==0.0)] = np.nan    
-
-    vrange_slider = mo.ui.range_slider(
-        start = 0.0, 
-        stop = 1.0, 
-        step = 0.01, 
-        value = [np.nanmin(new_fluxes), np.nanmax(new_fluxes)], 
-        label = "Colorbar range", 
-        orientation = "vertical"
-    )
-    return (vrange_slider,)
-
-
-@app.cell
-def _(mo):
-    plot_mode_options = ["No binning", "Yes binning"]
-    plot_mode = mo.ui.radio(
-        options=plot_mode_options,
-        value=plot_mode_options[0],
-        label="Plot mode: "
-    )
-    return plot_mode, plot_mode_options
-
-
-@app.cell
-def _(Time, date_slider):
-    # Create string that displays the currently selected date range in ISO (aka human-readable) format, just under the date range slider. 
-
-    def mjd_to_iso(mjd_value): 
-        return Time(mjd_value, format='mjd', scale='utc').to_datetime().date()
-
-    date_range_str = f"{mjd_to_iso(date_slider.value[0])} --- {mjd_to_iso(date_slider.value[1])}"
-    return (date_range_str,)
 
 
 @app.cell
@@ -162,109 +153,202 @@ def _(filebox, os):
 
 
 @app.cell
-def _(fh, file_paths, mo):
-    with mo.redirect_stdout():
-        bess_files_sorted, bess_mjd_sorted = fh.sort_files(file_paths, spec_feature=6562.8)
+def _(comparecheck, filebox2, os):
+    if comparecheck.value:
+        file_paths2 = os.path.expanduser("BeSS_Files/" + filebox2.value + '/*.fits')
+    return (file_paths2,)
+
+
+@app.cell
+def _(fh, file_paths):
+    bess_files_sorted, bess_mjd_sorted = fh.sort_files(file_paths, spec_feature=6562.8)
     return (bess_files_sorted,)
 
 
 @app.cell
-def _(bess_files_sorted, date_slider, dp, featurebox):
-    common_wave, mjd, dates, flux_arrays = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value) 
-    return common_wave, dates, flux_arrays, mjd
+def _(comparecheck, fh, file_paths2):
+    if comparecheck.value:
+       bess_files_sorted2, bess_mjd_sorted2 = fh.sort_files(file_paths2, spec_feature=6562.8)
+    return (bess_files_sorted2,)
+
+
+@app.cell
+def _(bess_files_sorted, date_slider, dp, featurebox, heliocheck, tbinbox):
+    x_positions, dates_arrays, flux_arrays = dp.data_setup(bess_files_sorted, feature=featurebox.value, dates=date_slider.value, bin_days=tbinbox.value, heliocor=heliocheck.value)
+    return dates_arrays, flux_arrays, x_positions
+
+
+@app.cell
+def _(mo, x_positions):
+    wave_range = mo.ui.range_slider(
+        debounce=True,
+        start=x_positions[0],
+        stop=x_positions[-1],
+        step=0.1,
+        value=[x_positions[0],x_positions[-1]],
+        label="X-axis Limits"
+    )
+    return (wave_range,)
+
+
+@app.cell
+def _(bess_files_sorted2, comparecheck, date_slider, dp, featurebox, tbinbox):
+    if comparecheck.value:
+        x_positions2, dates_arrays2, flux_arrays2 = dp.data_setup(bess_files_sorted2, feature=featurebox.value, dates=date_slider.value, bin_days=tbinbox.value)
+    return dates_arrays2, flux_arrays2, x_positions2
 
 
 @app.cell
 def _(
-    common_wave,
-    dates,
+    dates_arrays,
     dp,
-    filebox,
     flux_arrays,
-    mjd,
-    pf,
-    plot_mode,
-    plot_mode_options,
+    periodbox,
+    phasebinbox,
+    phasecheck,
     tbinbox,
-    vrange_slider,
-    xbutton,
-    ybutton,
-    ybutton_options,
+    time0box,
 ):
-    # Choose plot 
-
-
-
-    # New (John's version, does not require data to be binned) 
-    if plot_mode.value == plot_mode_options[0]: 
-
-        # Use button to decide whether to plot MJD or ISO on y axis 
-        if ybutton.value == ybutton_options[0]: 
-            yvals = dates 
-        if ybutton.value == ybutton_options[1]: 
-            yvals = mjd  
-    
-        # Create plot 
-        fig, ax = pf.plot_bess_unbinned(
-            common_wave, 
-            yvals, 
-            flux_arrays, 
-            xformat = xbutton.value, 
-            cmap = "inferno", 
-            vmin = vrange_slider.value[0], 
-            vmax = vrange_slider.value[1]
-        )
-
-
-
-    # Original (Sean's version, requires data to be binned) 
-    if plot_mode.value == plot_mode_options[1]: 
-
-        # --- Bin data ---
-        binned_dates, flux_matrix = dp.bin_times_and_spectra(mjd, flux_arrays, tbinbox.value)
-
-        # Use button to decide whether to plot MJD or ISO on y axis 
-        if ybutton.value == ybutton_options[0]: 
-            yformat = "isot"
-        if ybutton.value == ybutton_options[1]: 
-            yformat = "mjd"
-        
-        fig, ax = pf.plot_bess_binned_dynamic(
-            common_wave, binned_dates, flux_matrix,
-            target_name=filebox.value,
-            yformat=yformat, 
-            bin_days=tbinbox.value,
-            xformat = xbutton.value,
-            cmap="inferno", 
-            vmin = vrange_slider.value[0], 
-            vmax = vrange_slider.value[1]
-        ) 
-    return (fig,)
+    # --- Bin data ---
+    if phasecheck.value:
+        binned_y, flux_matrix = dp.phase_binning(dates_arrays, flux_arrays, time0box.value, periodbox.value, phasebinbox.value)
+    else:
+        binned_y, flux_matrix = dp.bin_times_and_spectra(dates_arrays, flux_arrays, tbinbox.value)
+    return binned_y, flux_matrix
 
 
 @app.cell
 def _(
-    date_range_str,
+    comparecheck,
+    dates_arrays2,
+    dp,
+    flux_arrays2,
+    periodbox,
+    phasebinbox,
+    phasecheck,
+    tbinbox,
+    time0box,
+):
+    if comparecheck.value:
+        if phasecheck.value:
+            binned_y2, flux_matrix2 = dp.phase_binning(dates_arrays2, flux_arrays2, time0box.value, periodbox.value, phasebinbox.value)
+        else:
+            binned_y2, flux_matrix2 = dp.bin_times_and_spectra(dates_arrays2, flux_arrays2, tbinbox.value)
+    return binned_y2, flux_matrix2
+
+
+@app.cell
+def _(
+    binned_y,
+    binned_y2,
+    cmapbox,
+    comparecheck,
+    flux_matrix,
+    flux_matrix2,
+    pf,
+    phasecheck,
+    velaxis,
+    vlimits,
+    wave_range,
+    x_positions,
+    x_positions2,
+    ybutton,
+):
+    if ybutton.value == "MJD" or phasecheck.value:
+        yfor = "mjd"
+    else:
+        yfor = "isot"
+    if comparecheck.value:
+        fig1, ax1 = pf.plot_bess_binned_dynamic(x_positions, binned_y, flux_matrix, wave_range.value, vlimits.value,
+                                                yformat=yfor,
+                                                cmap=cmapbox.value,
+                                                phaseplot=phasecheck.value,
+                                                toplabel=velaxis.value,
+                                                xvals2 = x_positions2,
+                                                yvals2 = binned_y2,
+                                                fluxes2 = flux_matrix2
+                                                )
+    else:
+        fig1, ax1 = pf.plot_bess_binned_dynamic(x_positions, binned_y, flux_matrix, wave_range.value, vlimits.value,
+                                                yformat=yfor,
+                                                cmap=cmapbox.value,
+                                                phaseplot=phasecheck.value,
+                                                toplabel=velaxis.value
+                                               )
+    return (fig1,)
+
+
+@app.cell
+def _(Time, date_slider):
+    lowerdate = Time(date_slider.value[0], format="mjd").to_value(format="isot", subfmt="date")
+    upperdate = Time(date_slider.value[1], format="mjd").to_value(format="isot", subfmt="date")
+    return lowerdate, upperdate
+
+
+@app.cell
+def _(
+    cmapbox,
+    comparecheck,
     date_slider,
     featurebox,
-    fig,
+    fig1,
     filebox,
+    filebox2,
+    heliocheck,
+    lowerdate,
     mo,
-    plot_mode,
+    periodbox,
+    phasebinbox,
+    phasecheck,
     tbinbox,
-    vrange_slider,
-    xbutton,
+    time0box,
+    upperdate,
+    velaxis,
+    vlimits,
+    wave_range,
     ybutton,
 ):
-    mo.hstack(
-        [
-            mo.mpl.interactive(fig), 
-            mo.vstack([filebox, featurebox, tbinbox, plot_mode, "\n", xbutton, "\n", ybutton, "\n", date_slider, date_range_str, "\n", vrange_slider])
-        ], 
-        widths=[1,1], 
-    )
+    if comparecheck.value:
+        if phasecheck.value:
+            output = [mo.mpl.interactive(fig1),
+                      mo.vstack([cmapbox,filebox, filebox2, featurebox, phasebinbox, time0box, periodbox, velaxis, phasecheck, comparecheck, heliocheck])
+                     ]
+        else:
+            output = [mo.mpl.interactive(fig1),
+                      mo.vstack([cmapbox,filebox, filebox2, featurebox, tbinbox, ybutton,wave_range,
+                                 mo.hstack([date_slider,mo.vstack(["","",upperdate,"","","","",lowerdate],gap=1.15),vlimits],widths=[0,0,1]),
+                                 velaxis, phasecheck, comparecheck, heliocheck
+                                ])
+                     ]
+        widthvals = [1,1]
 
 
+    else:
+        if phasecheck.value:
+            output = [mo.mpl.interactive(fig1),
+                      mo.vstack([cmapbox,filebox, featurebox, phasebinbox, time0box, periodbox, wave_range,
+                                 mo.hstack([mo.vstack([velaxis, phasecheck, comparecheck, heliocheck]),vlimits], widths=[1,3])
+                                ])
+                     ]
+        else:
+            output = [mo.mpl.interactive(fig1),
+                      mo.vstack([cmapbox,filebox, featurebox, tbinbox, ybutton,wave_range,
+                                 mo.hstack([date_slider,mo.vstack(["","",upperdate,"","","","",lowerdate],gap=1.15),vlimits],widths=[0,0,1]),
+                                 velaxis, phasecheck, comparecheck, heliocheck
+                                ])
+                     ]
+        widthvals = [1,1]
+    return output, widthvals
+
+
+@app.cell
+def _(mo, output, widthvals):
+    mo.hstack(output,widths=widthvals)
+    return
+
+
+@app.cell
+def _():
     return
 
 

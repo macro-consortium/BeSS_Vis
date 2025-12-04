@@ -6,7 +6,7 @@ import astropy.units as u
 from astropy.time import Time
 from datetime import datetime, timedelta
 
-def BeSSSpectra(file):
+def BeSSSpectra(file,**kwargs):
     """
     Load a 1-D BeSS spectrum from FITS.
 
@@ -15,7 +15,8 @@ def BeSSSpectra(file):
         spectrum: np.ndarray
         header: FITS header
     """
-
+    heliocor = kwargs.setdefault('heliocor',False)
+    
     try:
         f = fits.open(file)
         header = f[0].header
@@ -28,6 +29,10 @@ def BeSSSpectra(file):
         crpix1 = header.get('CRPIX1', 1.0)
 
         wavelengths = crval1 + (np.arange(len(spectrum)) + 1 - crpix1) * cdelt1
+
+        if heliocor:
+            velcor = header.get('BSS_RQVH',0.0)
+            wavelengths = wavelengths * (1-velcor/3e5)
 
         return wavelengths, spectrum, header
 
@@ -46,6 +51,7 @@ def sort_files(file_paths, spec_feature=6562.8):
         valid_files: list of paths
         valid_times: list of astropy Time objects (from DATE-OBS)
     """
+    
     files = glob.glob(file_paths)
     valid_files = []
     valid_times = []

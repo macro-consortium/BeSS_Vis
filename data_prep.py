@@ -1,21 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.time import Time
-from astropy.time import Time
 from datetime import datetime, timedelta
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, CubicSpline
 import warnings
 
 import file_handler as fh
 
-def read_spectra(files, date_range, wmin, wmax, common_wave):
+def read_spectra(files, date_range, wmin, wmax, common_wave, **kwargs):
+    heliocor = kwargs.setdefault('heliocor',False)
+    
     hold_dates = []
     hold_mjd = []
     hold_fluxes = []
     
     for fname in files:
         try:
-            wave, flux, header = fh.BeSSSpectra(fname)
+            wave, flux, header = fh.BeSSSpectra(fname, heliocor=heliocor)
             date_obs = header.get('DATE-OBS', None)
             dates_obs_T = Time(date_obs, format='isot', scale='utc')
             mjd_obs = dates_obs_T.mjd
@@ -122,12 +123,56 @@ def bin_times_and_spectra(dates, flux_arrays, bin_days):
         
     return binned_dates, flux_matrix
 
+def phase_binning(dates, flux_arrays, time0, period, bin_phase):
+    """
+    Bin spectra into fixed phase bins.
+
+    Parameters
+    ----------
+    dates : list of datetime objects
+    flux_arrays : list of 1D numpy arrays (already interpolated to common grid)
+    bin_phase : float
+        Bin width in phase.
+    time0 : time zero of ephemeris IN MJD!!!
+    period : period of ephemeris IN DAYS!!!
+
+    Returns
+    -------
+    binned_phases : list of phase (bin centers)
+    flux_matrix : list of 1D arrays (interpolated to binned_phases)
+    """
+
+    # First we build the phase bins according to what the user wants
+    #Ideally the bins would be made on a [0,1] grid, but that will require
+    #expolating, which has not worked well. Maybe fix in the future?
+    #Instead, we will use the minimum and maximum phases as observed
+    obs_phases = (dates - time0)/period - np.floor( (dates - time0)/period )
+    binned_phases = np.arange(np.min(obs_phases),np.max(obs_phases),bin_phase)
+    
+    #Next we need to sort the observed phases for the CubicSpline function
+    idx=np.argsort(obs_phases)
+    obs_phases = obs_phases[idx]
+    flux_arrays = flux_arrays[idx]
+
+    #CubicSpline works well, so we'll continue to use it.
+    flux_interp = CubicSpline(obs_phases, flux_arrays, axis=0)
+    binned_flux = flux_interp(binned_phases)
+    
+    #Now we reneed to duplicate the data so it can be plotted over 2 periods
+    #Should probably make this an option, but we're getting too many options...
+    binned_phases = np.append(binned_phases, binned_phases + 1)
+    flux_matrix = np.vstack((binned_flux,)*2)
+    
+
+    return binned_phases, flux_matrix
+    
 def data_setup(files, **kwargs):
 
     feature=kwargs.setdefault('feature','All')
     date_range=kwargs.setdefault('dates',None)
     interp=kwargs.setdefault('interp','auto')
     xformat = kwargs.setdefault('xformat', 'wavelength')
+    heliocor = kwargs.setdefault('heliocor',False)
     
     # --- define common wavelength grid ---
     if feature == 'All':
@@ -153,7 +198,7 @@ def data_setup(files, **kwargs):
         start_date = end_date = None
 
     # --- read each spectrum ---
-    all_dates, all_mjd, all_fluxes = read_spectra(files, date_range, wmin, wmax, common_wave)
+    all_dates, all_mjd, all_fluxes = read_spectra(files, date_range, wmin, wmax, common_wave, heliocor=heliocor)
 
     # --- sort by date ---
     sorted_idx = np.argsort(all_dates)
@@ -162,4 +207,4 @@ def data_setup(files, **kwargs):
     flux_arrays = np.array(all_fluxes)[sorted_idx]
     #print(mjd)
     
-    return common_wave, mjd, dates, flux_arrays
+    return common_wave, mjd, flux_arrays
